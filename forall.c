@@ -52,9 +52,9 @@ int main(int argc, char *argv[]) {
             if(child == 0){
                 // printf("Executing %s %s\n", argv[1],argv[i]); // a reminder how horrible this was to use for signals (not signal safe)
                 // fflush(stdout);
-                dprintf(fd,"Executing %s %s\n", argv[1],argv[i]);
                 execlp(argv[1],argv[1],argv[i],NULL);
             } else {
+                dprintf(fd,"Executing %s %s\n", argv[1],argv[i]);
                 int stat;
                 wait(&stat);
                 if(WIFEXITED(stat) == 0 || sigNum == 0){
