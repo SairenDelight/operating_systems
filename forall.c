@@ -12,12 +12,12 @@ static int sigNum = 0; // signal number
 static int saved_stdout; // used to save the output fd to terminal output
 int main(int argc, char *argv[]) {
     if(argc < 3){
-        puts("Too little arguments");
+        puts("Too little arguments.");
         return -1;
     } else {
         int intlen(int); //declaring function to count length of digit
         void handler(int); // declaring function handle signal interrupts
-        saved_stdout = dup(1);
+        saved_stdout = dup(1); //saving the file descriptor to the terminal
         
         struct sigaction sa;
         sa.sa_handler = &handler; //give handler function to replace default
@@ -29,7 +29,7 @@ int main(int argc, char *argv[]) {
             char num[totallen];
             snprintf(num,sizeof(num),"%d",c);
             char ext[5] = ".out";
-            strcat(num,ext);
+            strcat(num,ext); //concatenate the string for the file name
 
             int fd = open(num, O_RDWR | O_CREAT | O_APPEND); //opens the file
             if(fd == -1){
@@ -48,12 +48,18 @@ int main(int argc, char *argv[]) {
             }
 
             child = fork();
+            if(child == -1){
+                perror("Failed to fork");
+                exit(errno);
+            }
             
             if(child == 0){
                 // printf("Executing %s %s\n", argv[1],argv[i]); // a reminder how horrible this was to use for signals (not signal safe)
                 // fflush(stdout);
                 execlp(argv[1],argv[1],argv[i],NULL);
             } else {
+                setpgid(child,child); //oherwise the next following child will also terminate, therefore necessary to make it's own process group, kill kills ths process group so no ty
+                dprintf(saved_stdout,"Executing %s %s\n", argv[1],argv[i]);
                 dprintf(fd,"Executing %s %s\n", argv[1],argv[i]);
                 int stat;
                 wait(&stat);
@@ -71,6 +77,7 @@ int main(int argc, char *argv[]) {
     }
 }
 
+/*This will count the length of the digit*/
 int intlen(int input) {
     int count = 1;
     while(input >= 10) {
@@ -80,11 +87,12 @@ int intlen(int input) {
     return input;
 }
 
+/*The signal handler to catch the signals with sigaction*/
 void handler(int num) {
     switch(num) {
         case SIGINT:
             // printf("Signaling %d\n", child);
-            dprintf(saved_stdout,"Signaling %d\n", child); //Jeffrey Wu recommended the dprints instead of printf and fflush
+            dprintf(saved_stdout,"Signaling %d\n", child); //Jeffrey Wu recommended the dprints instead of printf and fflush otherwise printf would be disasterous to switch between file descriptors
             break;
         case SIGQUIT:
             dprintf(saved_stdout,"Signaling %d\n",getpid()); 
