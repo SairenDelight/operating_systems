@@ -1,4 +1,5 @@
-//First fit with a lot of anger
+//Vivian Hoang
+//First fit with a lot of anger, it add to the next free segment of the heap and extends...no deletion was implemented.
 #include <sys/mman.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -43,7 +44,7 @@ int main(int argc, char * argv[]){
     } else { 
             int map_flag = 0;
             int file = 0;
-            if(strncmp(argv[1],"-t",2) == 0){
+            if(strncmp(argv[1],"-t",2) == 0){ //http://www.cplusplus.com/reference/cstring/strcpy/
                 map_flag = MAP_PRIVATE;
                 file = 2;
             } else {
@@ -60,12 +61,12 @@ int main(int argc, char * argv[]){
                 }
             
                 if(dat_file_exists == -1){
-                    ftruncate(fd,INIT_SIZE);
+                    ftruncate(fd,INIT_SIZE); //Canvas homework mentions...
                     // printf("File passed is %s\n",argv[file]);
                 }
                 set_end_of_file(argv[file]);
 
-            struct fhdr_s *fhdr = mmap(NULL, MAX_SIZE, PROT_EXEC| PROT_READ | PROT_WRITE, map_flag,fd, 0); 
+            struct fhdr_s *fhdr = mmap(NULL, MAX_SIZE, PROT_EXEC| PROT_READ | PROT_WRITE, map_flag,fd, 0); //Man pages...
             moffset_t currentOffset = fhdr->free_start;
             spaceLeft  = (int)(endOfFile - (currentOffset + sizeof(struct entry_s)));
             // printf("Space left is %ld\n",spaceLeft);
@@ -175,7 +176,7 @@ int add_newEntry(moffset_t currentOffset, struct fhdr_s *fhdr, char input[]){
         cp[c] = input[i]; 
     }
     char temp[inputLength];
-    strncpy(temp,cp,inputLength);
+    strncpy(temp,cp,inputLength); //http://man7.org/linux/man-pages/man3/strcpy.3.html
     temp[excludeNullCharacterLength] = '\0';
 
 
