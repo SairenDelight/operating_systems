@@ -1,5 +1,4 @@
-//Vivian Hoang
-//First fit with a lot of anger, it add to the next free segment of the heap and extends...no deletion was implemented.
+//First fit with a lot of anger
 #include <sys/mman.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -20,8 +19,7 @@ struct LinkedList {
     moffset_t tail;
 };
 
-off_t spaceLeft = 0;
-off_t endOfFile = 0;
+int endOfFile = INIT_SIZE;
 int update_heap(struct fhdr_s *, moffset_t, int);
 int checkEntries(struct fhdr_s *, char[]);
 
@@ -29,48 +27,35 @@ int main(int argc, char * argv[]){
     //============= PRIVATE PROTOTYPES =================
     int init(struct fhdr_s *, int);
     int init_new_file(struct fhdr_s *);
-    int set_end_of_file(char[]);
+    int set_end_of_file(char*);
     int add_newEntry(moffset_t, struct fhdr_s *, char[]);
     void print_List(struct fhdr_s *);
     int insert(struct fhdr_s *);
     moffset_t get_last(moffset_t const,struct fhdr_s *);
     //============== END OF PROTOTYPES =================
+    int init(struct fhdr_s *, int);
+    int init_new_file(struct fhdr_s *);
+    int set_end_of_file(char*);
     if(argc < 2){
         printf("No file was selected...\n");
         return -1;
-    } else if ( argc > 3) {
+    } else if ( argc > 2) {
         printf("Too many files selected. Enter only one file. \n");
         return -1;
     } else { 
-            int map_flag = 0;
-            int file = 0;
-            if(strncmp(argv[1],"-t",2) == 0){ //http://www.cplusplus.com/reference/cstring/strcpy/
-                map_flag = MAP_PRIVATE;
-                file = 2;
-            } else {
-                map_flag = MAP_SHARED;
-                file = 1;
+            struct stat st;
+            int dat_file_exists = stat(argv[1],&st); 
+            int fd = open(argv[1],  O_RDWR | O_CREAT,  S_IRWXU | S_IRWXO | S_IRWXG); //https://linux.die.net/man/2/stat
+            if(fd == -1){
+                perror("Open");
+                close(fd);
+                exit(EXIT_FAILURE);
             }
-                struct stat st;
-                int dat_file_exists = stat(argv[file],&st); 
-                int fd = open(argv[file],  O_RDWR | O_CREAT,  S_IRWXU | S_IRWXO | S_IRWXG); //https://linux.die.net/man/2/stat
-                if(fd == -1){
-                    perror("Open");
-                    close(fd);
-                    exit(EXIT_FAILURE);
-                }
-            
-                if(dat_file_exists == -1){
-                    ftruncate(fd,INIT_SIZE); //Canvas homework mentions...
-                    // printf("File passed is %s\n",argv[file]);
-                }
-                set_end_of_file(argv[file]);
+            ftruncate(fd,INIT_SIZE);
 
-            struct fhdr_s *fhdr = mmap(NULL, MAX_SIZE, PROT_EXEC| PROT_READ | PROT_WRITE, map_flag,fd, 0); //Man pages...
-            moffset_t currentOffset = fhdr->free_start;
-            spaceLeft  = (int)(endOfFile - (currentOffset + sizeof(struct entry_s)));
-            // printf("Space left is %ld\n",spaceLeft);
+            set_end_of_file(argv[1]);
 
+            struct fhdr_s *fhdr = mmap(NULL, INIT_SIZE, PROT_EXEC| PROT_READ | PROT_WRITE, MAP_SHARED,fd, 0); 
             //Error return if mapping failed
             if(fhdr == MAP_FAILED){
                 perror("Error mapping failed");
@@ -79,10 +64,13 @@ int main(int argc, char * argv[]){
             }
 
             init(fhdr,dat_file_exists); //this will initialize values if file doesn't exist already
+            struct LinkedList list = {0};
+            moffset_t tail = get_last(fhdr->data_start,fhdr);
+            list.head = (moffset_t)fhdr->data_start;
+            list.tail = tail;
             
             int i = 0;
             do {
-
                 char input[MAXCHAR];
                 fgets(input, MAXCHAR, stdin);
                 switch(input[0]){
@@ -92,25 +80,12 @@ int main(int argc, char * argv[]){
                     }
 
                     case 'a':
-                        if(isalpha(input[2]) || isdigit(input[2])){
-                            currentOffset = fhdr->free_start;
-                            off_t isOver = sizeof(struct entry_s) + MAXCHAR;
-                            if(isOver > spaceLeft && endOfFile < MAX_SIZE){
-                                int extend = endOfFile+1024;
-                                if(extend > MAX_SIZE){
-                                    printf("MAX SIZE reached! Cannot expand file!!");
-                                } else {
-                                    ftruncate(fd,endOfFile+1024);
-                                    set_end_of_file(argv[file]);
-                                }
-                            } else {
-                                //check if word exists in entries
-                                int success = add_newEntry(currentOffset, fhdr, input); //this adds to heap
-                                if(success != 0){
-                                    puts("░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░ ERROR MESSAGE ░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░");
-                                    printf("\nDear user,\n I know it's your favorite word...but it's already in the entry so please stop...I'm not adding it!\nFrom,\nVivian\n\n");
-                                    puts("░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░ END OF ERROR MESSAGE ░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░");
-                                }
+                        if(isalpha(input[2])){
+                            moffset_t currentOffset = fhdr->free_start;
+                            //check if word exists in entries
+                            int success = add_newEntry(currentOffset, fhdr, input); //this adds to heap
+                            if(success != 0){
+                                printf("Did not add because already exists in entry...\n");
                             }
                         } else {
                             printf("Command must be one of:\n l\n a string_to_add\n d string_to_del\n");
@@ -126,7 +101,7 @@ int main(int argc, char * argv[]){
                         break;
                 }
             } while (1); //Press Ctrl+C to quit
-            munmap(fhdr,MAX_SIZE);
+            munmap(fhdr,INIT_SIZE);
             close(fd);
     }
 
@@ -167,6 +142,10 @@ void print_List(struct fhdr_s *fhdr){
 
 //This will add the new entry to the heap
 int add_newEntry(moffset_t currentOffset, struct fhdr_s *fhdr, char input[]){
+    
+    //add return -1 if entry exceeds size of file
+
+
     /*This will copy the string into a proper null terminated character form*/
     int get_Length_Of_String(char[]);
     int inputLength = get_Length_Of_String(input); //the actual length with the null terminated character
@@ -176,12 +155,12 @@ int add_newEntry(moffset_t currentOffset, struct fhdr_s *fhdr, char input[]){
         cp[c] = input[i]; 
     }
     char temp[inputLength];
-    strncpy(temp,cp,inputLength); //http://man7.org/linux/man-pages/man3/strcpy.3.html
+    strncpy(temp,cp,inputLength);
     temp[excludeNullCharacterLength] = '\0';
 
 
-    int exists = checkEntries(fhdr, temp); //this check if it exists...it'll return the previous offset before the add location
-    // printf("The previous offset is %d\n",exists);
+    int exists = checkEntries(fhdr, temp); //this check if it exists...it'll return the previous offset before the add lcoation
+
     if(exists >= 0){
         moffset_t tempOffset = 0;
         if(exists == 0){
@@ -198,14 +177,9 @@ int add_newEntry(moffset_t currentOffset, struct fhdr_s *fhdr, char input[]){
         new_entry->len = inputLength;
         strncpy(new_entry->str,cp,inputLength);
         new_entry->str[excludeNullCharacterLength] = '\0';
-        // printf("Magic: %d\n",new_entry->magic);
-        // printf("Next: %lld\n",new_entry->next);
-        // printf("Len is: %d\n",new_entry->len);
-        // printf("The string in the new entry is %s\n",new_entry->str);
         update_heap(fhdr, currentOffset, new_entry->len);
         return 0;
     } else {
-        // printf("The entries are equal so they will not be added...\n");
         return -1;
     }
 }
@@ -244,11 +218,10 @@ int update_heap(struct fhdr_s * fhdr, moffset_t currentOffset, int len){
         fhdr->free_start =  currentOffset;
         struct entry_s *free_entry = (struct entry_s *) ((char*) fhdr + currentOffset); //currentOffset is now AFTER new entry
         int lengthOfFile = (int)(endOfFile - (currentOffset + sizeof(*free_entry))); //get new length of free space
-        int additional = currentOffset + sizeof(*free_entry);
+        // printf("The length of file is now: %d\n",lengthOfFile);
         free_entry->magic = ENTRY_MAGIC_FREE;
         free_entry->next = 0;
         free_entry->len = lengthOfFile;
-        spaceLeft = lengthOfFile;
     } else {
         struct entry_s *free_entry = (struct entry_s *) ((char*) fhdr + currentOffset); //this is the address
         free_entry->magic = ENTRY_MAGIC_FREE;
@@ -272,35 +245,46 @@ int get_Length_Of_String(char input[]){
 }
 
 //This will set the global variable endOfFile to the total amount of bytes of the file
-int set_end_of_file(char filename[]){
-    // printf("File name is %s\n",filename);
-    struct stat s;
-    stat(filename,&s);
-    endOfFile = s.st_size;
-    // printf("The end of file is...%ld\n",endOfFile);
+int set_end_of_file(char* filename){
+    int endFd = open(filename, O_RDONLY); //Just using this to get the bytes from the end of the file
+    endOfFile = (int) lseek(endFd,0,SEEK_END);
+    close(endFd);
 }
 
 //This will initialize a new file
 int init_new_file(struct fhdr_s * fhdr){
-    // puts("New file...");
+    puts("New file...");
     fhdr->magic = FILE_MAGIC;
     fhdr->free_start = (moffset_t)sizeof(*fhdr);
     fhdr->data_start = 0;
     int lengthOfFile = (int)(endOfFile - (sizeof(*fhdr) + sizeof(struct entry_s)));
-    // printf("The address of fhdr is %p\n",fhdr);
-    // printf("The value of fhdr->magic is %d\n",fhdr->magic);
-    // printf("The address of the value is fhdr->magic is %p\n",&fhdr->magic);
-    // printf("The address of the value is fhdr->free_start is %p\n",&fhdr->free_start);
-    // printf("The value is fhdr->free_start is %lld\n",fhdr->free_start);
-    // printf("The value is fhdr->data_start is %lld\n",fhdr->data_start);
+    printf("The address of fhdr is %p\n",fhdr);
+    printf("The value of fhdr->magic is %d\n",fhdr->magic);
+    printf("The address of the value is fhdr->magic is %p\n",&fhdr->magic);
+    printf("The address of the value is fhdr->free_start is %p\n",&fhdr->free_start);
+    printf("The value is fhdr->free_start is %lld\n",fhdr->free_start);
+    printf("The value is fhdr->data_start is %lld\n",fhdr->data_start);
 
-    update_heap(fhdr,fhdr->free_start,lengthOfFile);
+    // update_heap(fhdr,fhdr->free_start,lengthOfFile);
     return 0;
 }
 
 int init(struct fhdr_s *fhdr, int fileExists){
-    if(fileExists == -1){
+    if(fileExists != -1){
+        // puts("File exists...");
+        // printf("The address of fhdr is %p\n",fhdr);
+        // printf("The value of fhdr->magic is %d\n",fhdr->magic);
+        // printf("The address of the value is fhdr->magic is %p\n",&fhdr->magic);
+        // printf("The address of the value is fhdr->free_start is %p\n",&fhdr->free_start);
+        // printf("The value is fhdr->free_start is %lld\n",fhdr->free_start);
+        // printf("The value is fhdr->data_start is %lld\n",fhdr->data_start);
+        // fhdr->magic= FILE_MAGIC;
+        // fhdr->free_start = *(moffset_t*)(fhdr + sizeof(short));
+        // printf("Print the free_start which is...%lld\n",fhdr->free_start);
+        // fhdr->data_start = *(moffset_t*)(fhdr + sizeof(short) + sizeof(moffset_t));
+        // printf("Print the data_start which is...%lld\n",fhdr->data_start);
+    } else {
         init_new_file(fhdr);
-    } //The data should already be saved in the entry.
+    }
     return 0;
 }

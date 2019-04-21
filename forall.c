@@ -56,10 +56,10 @@ int main(int argc, char *argv[]) {
             if(child == 0){
                 // printf("Executing %s %s\n", argv[1],argv[i]); // a reminder how horrible this was to use for signals (not signal safe)
                 // fflush(stdout);
+                setpgid(getppid(),getppid()); //oherwise the next following child will also terminate, therefore necessary to make it's own process group, kill kills ths process group so no ty
                 execlp(argv[1],argv[1],argv[i],NULL);
             } else {
-                setpgid(child,child); //oherwise the next following child will also terminate, therefore necessary to make it's own process group, kill kills ths process group so no ty
-                dprintf(saved_stdout,"Executing %s %s\n", argv[1],argv[i]);
+                // dprintf(saved_stdout,"Executing %s %s\n", argv[1],argv[i]);
                 dprintf(fd,"Executing %s %s\n", argv[1],argv[i]);
                 int stat;
                 wait(&stat);
