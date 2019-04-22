@@ -45,41 +45,18 @@ void * threadFunc(void * id){
     pthread_exit(NULL);
 }
 
-
-// void * threadPrint(void * id){
-//     pthread_mutex_lock(&lock[0]);
-//     int * idNumPtr = id;
-//     int idNum = *idNumPtr;
-//     if(signal[idNum] == 1){
-//         printf("Printing on the thread %d!\n",idNum);
-//         pthread_cond_signal(&cond); 
-//     }
-//     counter++;
-//     pthread_mutex_unlock(&lock[0]);
-// }
-
-
-// void * threadWait(void * id){
-//     pthread_mutex_lock(&lock[1]);
-//     int * idNumPtr = id;
-//     int idNum = *idNumPtr;
-//     if(signal[idNum] == 0){
-//         printf("Printing on the thread con %d so I am waiting no dur!\n",idNum);
-//         signal[idNum]++;
-//         pthread_cond_wait(&cond, &lock[0]); 
-//     } 
-//         printf("Finishing up the code lalalala");
-//         consume();
-    
-//     con_counter++;
-//     pthread_mutex_unlock(&lock[1]);
-// }
+static int consumer_count;
+static int producer_count;
 
 int main(int argc, char* argv[]){
     if ( argc < 2){
         printf("USAGE: %s thread_count ....\n", argv[0]);
         exit(1);
     }
+
+    // consumer_count = strtol(argv[2], NULL, 10);
+    // producer_count = strtol(argv[3], NULL, 10);
+
     pthread_mutex_init(&lock[0], NULL);
     pthread_mutex_init(&lock[1], NULL);
     int thread_count = strtol(argv[1], NULL, 10);
@@ -94,7 +71,7 @@ int main(int argc, char* argv[]){
         // pthread_mutex_lock(&lock[0]);
         if(i >= thread_count){
             // pthread_mutex_unlock(&lock[0]);
-            counter = 0;
+            // counter = 0;
             break;
         } else if(pthread_create(&thread_id[i], NULL, threadFunc, &counter) != 0){ //detect for thread creation failure
             perror("Thread creation");
@@ -102,6 +79,7 @@ int main(int argc, char* argv[]){
         } 
         i++;
     }
+
 
     // puts("WHEEE");
 
@@ -132,6 +110,7 @@ int main(int argc, char* argv[]){
         printf("Do my consumer children return: %d\n\n",c);
         c++;
     } while(c < thread_count);
+    printf("Does this print after running the thing before?");
     pthread_mutex_destroy(&lock[0]);
     pthread_mutex_destroy(&lock[1]);
     return 0;
