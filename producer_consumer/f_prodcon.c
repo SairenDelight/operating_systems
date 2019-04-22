@@ -1,3 +1,15 @@
+//Vivian Hoang
+// Credits: Used Ben's code for linked list and consume/produce
+// Referenced: 
+// http://man7.org/linux/man-pages/man3/pthread_join.3.html
+// https://stackoverflow.com/questions/14768230/malloc-for-struct-and-pointer-in-c
+// https://bitbucket.org/br33d/cs149/src/50580b1be952a91b11a833c87ea55365bd8d0fb4/concurrent_linked_list/linkedlist.c?at=master&fileviewer=file-view-default
+// https://www.geeksforgeeks.org/multithreading-c-2/
+// https://www.ibm.com/support/knowledgecenter/ssw_ibm_i_72/apis/users_78.htm
+// https://linux.die.net/man/3/pthread_mutex_lock
+// https://linux.die.net/man/3/pthread_cond_init
+
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <dlfcn.h>
@@ -22,16 +34,11 @@ prodArg * consumer_args;
 pthread_mutex_t * lock;
 pthread_mutex_t prodLock;
 pthread_cond_t * cond;
-int * isProducer;
-
-
 
 struct llist_node {
     struct llist_node *next;
     char *str;
 };
-
-
 
 
 /**
@@ -47,6 +54,7 @@ char *pop(struct llist_node **phead)
     if (*phead == NULL) {
         return NULL;
     }
+
     char *s = (*phead)->str;
     struct llist_node *next = (*phead)->next;
     free(*phead);
@@ -90,8 +98,6 @@ void produce(const char *buffer)
 
 char *consume() {
     char *str = pop(&heads[my_consumer_number]);
-    // char *str = pop(&heads[consumer_args->id]);
-    // printf("CONSUMER ID IN CONSUME FUNCTION IS: %d with data %s\n",my_consumer_number,str);
     return str;
 }
 
@@ -102,12 +108,12 @@ void do_usage(char *prog)
 }
 
 void * thread_Produce(void * ptr){
-    prodArg * temp = ptr;
-    int idNum = temp->id;
      if(pthread_mutex_lock(&prodLock) != 0){
         perror("Mutex Lock in thread_Func");
         exit(EXIT_FAILURE);
     }
+    prodArg * temp = ptr;
+    int idNum = temp->id;
     temp->id++;
     run_producer(idNum, producer_count, produce, temp->new_argc, temp->new_argv);
 
@@ -126,36 +132,10 @@ void * thread_Consume(void * ptr){
         exit(EXIT_FAILURE);
     }
     temp->id++;
-    isProducer[idNum]++;
     pthread_cond_wait(&cond[idNum], &lock[idNum]); 
     my_consumer_number = idNum;
     run_consumer(idNum, consume, temp->new_argc, temp->new_argv);
 
-
-    if(pthread_mutex_unlock(&lock[idNum]) != 0){
-        perror("Mutex Unlock in thread_Func");
-        exit(EXIT_FAILURE);
-    }
-    pthread_exit(NULL);
-}
-
-void * thread_Func(void * ptr) {
-    prodArg * temp = ptr;
-    int idNum = temp->id;
-    if(pthread_mutex_lock(&lock[idNum]) != 0){
-        perror("Mutex Lock in thread_Func");
-        exit(EXIT_FAILURE);
-    }
-    if(isProducer[idNum] == 1){
-        temp->id++;
-        run_producer(idNum, producer_count, produce, temp->new_argc, temp->new_argv);
-    } else {
-        temp->id++;
-        isProducer[idNum]++;
-        pthread_cond_wait(&cond[idNum], &lock[idNum]); 
-        my_consumer_number = idNum;
-        run_consumer(idNum, consume, temp->new_argc, temp->new_argv);
-    }
 
     if(pthread_mutex_unlock(&lock[idNum]) != 0){
         perror("Mutex Unlock in thread_Func");
@@ -197,11 +177,9 @@ int main(int argc, char **argv)
 
     pthread_t producers[producer_count]; //initialize the producers
     pthread_t consumers[consumer_count]; //initialize the consumers
-    isProducer = malloc(sizeof(int) * consumer_count);
     lock = malloc(sizeof(pthread_mutex_t) * consumer_count);
     cond = malloc(sizeof(pthread_cond_t) * consumer_count);
     pthread_mutex_init(&prodLock, NULL);
-    // puts("MADE IT HERE");
     for(int i = 0 ; i < consumer_count; i++){
         pthread_mutex_init(&lock[i],NULL);
         pthread_cond_init(&cond[i], NULL);
@@ -227,7 +205,6 @@ int main(int argc, char **argv)
             producer_args->id = 0;
             break;
         } else {
-            // int pthread = pthread_create(&producers[i], NULL,thread_Func, producer_args);
             int pthread = pthread_create(&producers[i], NULL,thread_Produce, producer_args);
             if(pthread != 0){
                 perror("Thread creation");
@@ -243,7 +220,6 @@ int main(int argc, char **argv)
             break;
         } else {
             int pthread = pthread_create(&consumers[i], NULL,thread_Consume, consumer_args);
-            // int pthread = pthread_create(&consumers[i], NULL,thread_Func, consumer_args);
             if(pthread != 0){
                 perror("Thread creation");
                 exit(EXIT_FAILURE);
@@ -282,11 +258,10 @@ int main(int argc, char **argv)
         pthread_mutex_destroy(&lock[x]);
     }
     pthread_mutex_destroy(&prodLock);
-
-    free(producer_args);
     free(lock);
-    free(isProducer);
     free(cond);
+    free(producer_args);
     free(consumer_args);
+    free(heads);
     return 0;
 }

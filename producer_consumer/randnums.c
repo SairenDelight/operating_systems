@@ -31,7 +31,7 @@ void run_consumer(int num, consume_f consume, int argc, char **argv)
     char *str;
     while ((str = consume()) != NULL) {
         total += atol(str);
-	free(str);
+	// free(str);
     }
     printf("consumer %d consumed: %lld\n", num, total);
 }
